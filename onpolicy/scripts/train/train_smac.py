@@ -171,11 +171,12 @@ def main(args):
         os.makedirs(str(run_dir))
 
     if all_args.use_wandb:
+        wandb.login("70b5f3235380831d1d7af05f77b4d9f1aabf1ac0")
         run = wandb.init(config=all_args,
                          project=all_args.env_name,
-                         entity=all_args.user_name,
+                         entity=all_args.user_name, #TODO: Change to my username
                          notes=socket.gethostname(),
-                         name=str(all_args.algorithm_name) + "_" +
+                         name="firstTest_"+ str(all_args.algorithm_name) + "_" +
                               str(all_args.experiment_name) + "_" + 
                               str(all_args.units) +
                               "_seed" + str(all_args.seed),

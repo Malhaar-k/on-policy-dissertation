@@ -2,9 +2,8 @@
 #$ -cwd
 
 #NVIDIA settings for CUDA 
-#$ -l nvidia_v100=4
-#$ -l nvidia_a100=4
-#$ -pe smp.pe 8
+#$ -l nvidia_v100=1
+
 
 
 

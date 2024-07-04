@@ -62,7 +62,7 @@ Even though we provide requirement.txt, it may have redundancy. We recommend tha
    
 
 ``` Bash
-unzip SC2.4.10.zip
+unzip SC2.4.10.zip -P
 # password is iagreetotheeula
 echo "export SC2PATH=~/StarCraftII/" >> ~/.bashrc
 ```
