@@ -13,7 +13,7 @@ RUN apt-get install software-properties-common -y
 RUN add-apt-repository -y multiverse 
 RUN apt-get update -y && apt-get upgrade -y 
 RUN apt-get install -y apt-utils nano vim man build-essential wget sudo
-RUN rm -rf /var/lib/apt/lists/*
+# RUN rm -rf /var/lib/apt/lists/*
 
 
 # Create the /scratch directory
@@ -41,18 +41,14 @@ RUN pip3 install --upgrade pip
 # Unzip SMAC and export to environment
 # This does need to be moved to the /scratch directory
 
-COPY requirements.txt .
- 
+COPY install_sc.sh .  
+RUN chmod +x install_sc.sh && bash install_sc.sh
 
+COPY requirements.txt . 
 
 RUN pip3 install -r requirements.txt
 # RUN pip3 install -U ray
 
-WORKDIR /scratch/on-policy
-COPY install_sc.sh .  
-ENV PYTHONPATH "/scratch/on-policy:${PYTHONPATH}"
 
-
-
-RUN chmod +x install_sc.sh && bash install_sc.sh
-# Change permissions of train.sh to be executable
+WORKDIR /scratch/onpolicy
+ENV PYTHONPATH "/scratch/onpolicy:${PYTHONPATH}"
