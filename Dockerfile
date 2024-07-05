@@ -50,5 +50,5 @@ RUN pip3 install -r requirements.txt
 # RUN pip3 install -U ray
 
 
-WORKDIR /scratch/onpolicy
-ENV PYTHONPATH "/scratch/onpolicy:${PYTHONPATH}"
+WORKDIR /scratch/on-policy
+ENV PYTHONPATH "/scratch/on-policy:${PYTHONPATH}"

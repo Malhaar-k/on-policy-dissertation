@@ -171,10 +171,10 @@ def main(args):
         os.makedirs(str(run_dir))
 
     if all_args.use_wandb:
-        wandb.login("70b5f3235380831d1d7af05f77b4d9f1aabf1ac0")
+        wandb.login(key="a63b1d8f9ff7c36862775a025173815923f7621d", relogin=True) #Yes this is insecure
         run = wandb.init(config=all_args,
                          project=all_args.env_name,
-                         entity=all_args.user_name, #TODO: Change to my username
+                         entity="malhaar-karandikar", #TODO: Change to my username
                          notes=socket.gethostname(),
                          name="firstTest_"+ str(all_args.algorithm_name) + "_" +
                               str(all_args.experiment_name) + "_" + 
