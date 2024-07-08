@@ -49,10 +49,8 @@ RUN pip3 install -r requirements.txt
 # RUN pip3 install -U ray
 
 WORKDIR /scratch/on-policy
-COPY install_sc.sh .  
+RUN touch temp_doc.txt
 ENV PYTHONPATH "/scratch/on-policy:${PYTHONPATH}"
 
-
-
-RUN chmod +x install_sc.sh && bash install_sc.sh
+RUN chmod +x ../install_sc.sh && bash ../install_sc.sh
 # Change permissions of train.sh to be executable
