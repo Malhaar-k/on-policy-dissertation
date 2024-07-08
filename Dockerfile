@@ -12,16 +12,16 @@ RUN apt-get update -y
 RUN apt-get install software-properties-common -y 
 RUN add-apt-repository -y multiverse 
 RUN apt-get update -y && apt-get upgrade -y 
-RUN apt-get install -y apt-utils nano vim man build-essential wget sudo
+RUN apt-get install -y apt-utils nano man build-essential wget sudo
 # RUN rm -rf /var/lib/apt/lists/*
 
 
 # Create the /scratch directory
 RUN mkdir /scratch
-ENV HOME=/scratch
 # Copy the entire project folder to the container. Not needed
 COPY . /scratch 
-
+#Remove onpolicy folder since we use a local copy in CSF
+RUN rm -rf onpolicy 
 
 # Set the working directory
 WORKDIR /scratch
@@ -41,14 +41,12 @@ RUN pip3 install --upgrade pip
 # Unzip SMAC and export to environment
 # This does need to be moved to the /scratch directory
 
-COPY install_sc.sh .  
 RUN chmod +x install_sc.sh && bash install_sc.sh
-
-COPY requirements.txt . 
+ 
 
 RUN pip3 install -r requirements.txt
 # RUN pip3 install -U ray
 
-
+RUN mkdir /scratch/on-policy
 WORKDIR /scratch/on-policy
 ENV PYTHONPATH "/scratch/on-policy:${PYTHONPATH}"
