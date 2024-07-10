@@ -18,10 +18,9 @@ RUN rm -rf /var/lib/apt/lists/*
 
 # Create the /scratch directory
 RUN mkdir /scratch
-ENV HOME=/scratch
 # Copy the entire project folder to the container. Not needed
-COPY . /scratch 
 
+ 
 
 # Set the working directory
 WORKDIR /scratch
@@ -41,7 +40,6 @@ RUN pip3 install --upgrade pip
 # Unzip SMAC and export to environment
 # This does need to be moved to the /scratch directory
 
-COPY requirements.txt .
  
 
 
@@ -49,10 +47,10 @@ RUN pip3 install -r requirements.txt
 # RUN pip3 install -U ray
 
 WORKDIR /scratch/on-policy
-COPY install_sc.sh .  
 ENV PYTHONPATH "/scratch/on-policy:${PYTHONPATH}"
 
-
+COPY *.zip /scratch/on-policy/
+COPY install_sc.sh /scratch/on-policy/
 
 RUN chmod +x install_sc.sh && bash install_sc.sh
 # Change permissions of train.sh to be executable
