@@ -4,8 +4,30 @@ from collections import defaultdict
 from .util import check, get_shape_from_obs_space, get_shape_from_act_space
 
 def _flatten(T, N, x):
+    """
+    Flattens the input array `x` along the first dimension.
+
+    Args:
+        T (int): The length of the first dimension.
+        N (int): The length of the second dimension.
+        x (ndarray): The input array to be flattened.
+
+    Returns:
+        ndarray: The flattened array with shape (T * N, *x.shape[2:]).
+    """
     return x.reshape(T * N, *x.shape[2:])
 
+def _cast(x):
+    """
+    Transposes the input tensor `x` along the first two dimensions and reshapes it.
+
+    Args:
+        x (torch.Tensor): The input tensor.
+
+    Returns:
+        torch.Tensor: The transposed and reshaped tensor.
+    """
+    return x.transpose(1, 0, 2).reshape(-1, *x.shape[2:])
 def _cast(x):
     return x.transpose(1,0,2).reshape(-1, *x.shape[2:])
 
@@ -167,6 +189,33 @@ class SeparatedReplayBuffer(object):
                     self.returns[step] = self.returns[step + 1] * self.gamma * self.masks[step + 1] + self.rewards[step]
 
     def feed_forward_generator(self, advantages, num_mini_batch=None, mini_batch_size=None):
+        """
+        Generates mini-batches of data for feed-forward pass in PPO training.
+
+        Args:
+            advantages (torch.Tensor): Advantage values for each timestep.
+            num_mini_batch (int, optional): Number of mini-batches to generate. Defaults to None.
+            mini_batch_size (int, optional): Size of each mini-batch. Defaults to None.
+
+        Yields:
+            tuple: A tuple containing the following tensors:
+                - share_obs_batch (torch.Tensor): Batch of shared observations.
+                - obs_batch (torch.Tensor): Batch of observations.
+                - rnn_states_batch (torch.Tensor): Batch of RNN states.
+                - rnn_states_critic_batch (torch.Tensor): Batch of critic RNN states.
+                - actions_batch (torch.Tensor): Batch of actions.
+                - value_preds_batch (torch.Tensor): Batch of value predictions.
+                - return_batch (torch.Tensor): Batch of returns.
+                - masks_batch (torch.Tensor): Batch of masks.
+                - active_masks_batch (torch.Tensor): Batch of active masks.
+                - old_action_log_probs_batch (torch.Tensor): Batch of old action log probabilities.
+                - adv_targ (torch.Tensor): Batch of advantage targets.
+                - available_actions_batch (torch.Tensor): Batch of available actions.
+                - factor_batch (torch.Tensor): Batch of factors.
+
+        Raises:
+            AssertionError: If the batch size is smaller than the number of mini-batches.
+        """
         episode_length, n_rollout_threads = self.rewards.shape[0:2]
         batch_size = n_rollout_threads * episode_length
 
@@ -189,8 +238,8 @@ class SeparatedReplayBuffer(object):
         actions = self.actions.reshape(-1, self.actions.shape[-1])
         if self.available_actions is not None:
             available_actions = self.available_actions[:-1].reshape(-1, self.available_actions.shape[-1])
-        value_preds = self.value_preds[:-1].reshape(-1, 1)
-        returns = self.returns[:-1].reshape(-1, 1)
+        value_preds = self.value_preds[:-1].reshape(-1, 1) # Value predictions
+        returns = self.returns[:-1].reshape(-1, 1) # Returns from runs?
         masks = self.masks[:-1].reshape(-1, 1)
         active_masks = self.active_masks[:-1].reshape(-1, 1)
         action_log_probs = self.action_log_probs.reshape(-1, self.action_log_probs.shape[-1])

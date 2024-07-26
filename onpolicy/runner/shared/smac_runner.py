@@ -42,6 +42,10 @@ class SMACRunner(Runner):
 
             # compute return and update network
             self.compute()
+
+            """ 
+            ################################################################## TRAINING CALL 
+            """
             train_infos = self.train()
             
             # post process

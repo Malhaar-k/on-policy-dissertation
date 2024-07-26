@@ -159,6 +159,8 @@ class Runner(object):
                                                             self.buffer[agent_id].masks[:-1].reshape(-1, *self.buffer[agent_id].masks.shape[2:]),
                                                             available_actions,
                                                             self.buffer[agent_id].active_masks[:-1].reshape(-1, *self.buffer[agent_id].active_masks.shape[2:]))
+            
+            # Policy trainer called here
             train_info = self.trainer[agent_id].train(self.buffer[agent_id])
 
             if self.all_args.algorithm_name == "hatrpo":

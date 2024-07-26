@@ -6,6 +6,9 @@ from onpolicy.runner.separated.base_runner import Runner
 import wandb
 
 def _t2n(x):
+    """ 
+    Move tensor to cpu and convert it to a numpy array
+    """
     return x.detach().cpu().numpy()
 
 class SMACRunner(Runner):
@@ -39,7 +42,7 @@ class SMACRunner(Runner):
                 # insert data into buffer
                 self.insert(data)
 
-            # compute return and update network
+            """ ##################################################  Compute return and update network """
             self.compute()
             train_infos = self.train()
             

@@ -94,6 +94,15 @@ class HATRPO():
         return value_loss
 
     def flat_grad(self, grads):
+        """
+        Flattens the gradients into a 1-dimensional tensor.
+
+        Args:
+            grads (list): A list of gradients.
+
+        Returns:
+            torch.Tensor: A 1-dimensional tensor containing the flattened gradients.
+        """
         grad_flatten = []
         for grad in grads:
             if grad is None:
@@ -183,6 +192,92 @@ class HATRPO():
         kl_hessian_p = self.flat_hessian(kl_hessian_p)
         return kl_hessian_p + 0.1 * p
 
+    def mdpo_update(self, sample, update_actor=True):
+        """
+        Update actor and critic networks using MDPO
+        :param sample: (Tuple) contains data batch with which to update networks.
+        :update_actor: (bool) whether to update actor network.
+
+        :return value_loss: (torch.Tensor) value function loss.
+        :return critic_grad_norm: (torch.Tensor) gradient norm from critic update.
+        ;return policy_loss: (torch.Tensor) actor(policy) loss value.
+        :return dist_entropy: (torch.Tensor) action entropies.
+        :return actor_grad_norm: (torch.Tensor) gradient norm from actor update.
+        :return imp_weights: (torch.Tensor) importance sampling weights.
+        
+        """
+        share_obs_batch, obs_batch, rnn_states_batch, rnn_states_critic_batch, actions_batch, \
+        value_preds_batch, return_batch, masks_batch, active_masks_batch, old_action_log_probs_batch, \
+        adv_targ, available_actions_batch, factor_batch = sample
+
+        """
+        adv_targ := Advantage value?? I think 
+        old_action_log_probs_batch := Old action policy 
+        
+        """
+
+        values, action_log_probs, dist_entropy, action_mu, action_std, _ = self.policy.evaluate_actions(share_obs_batch,
+                                                                              obs_batch, 
+                                                                              rnn_states_batch, 
+                                                                              rnn_states_critic_batch, 
+                                                                              actions_batch, 
+                                                                              masks_batch, 
+                                                                              available_actions_batch,
+                                                                              active_masks_batch)
+
+        # critic update
+        value_loss = self.cal_value_loss(values, value_preds_batch, return_batch, active_masks_batch)
+
+        self.policy.critic_optimizer.zero_grad()
+
+        (value_loss * self.value_loss_coef).backward()
+
+        if self._use_max_grad_norm:
+            critic_grad_norm = nn.utils.clip_grad_norm_(self.policy.critic.parameters(), self.max_grad_norm)
+        else:
+            critic_grad_norm = get_gard_norm(self.policy.critic.parameters())
+
+        self.policy.critic_optimizer.step()
+
+        """ 
+        Actor update steps: 
+        1. Initialise an "old" actor with current actor params
+        2. for loop for updating?
+        """
+        
+        old_params = self.flat_params(self.policy.actor)
+        old_actor = R_Actor(self.policy.args, 
+                            self.policy.obs_space,  
+                            self.policy.act_space, 
+                            self.device)
+        self.update_model(old_actor, old_params)
+
+        beta = 0.5 # Temp value for now
+        sgd_steps:int = 10
+        for _ in range(sgd_steps):
+            kl = self.kl_divergence(obs_batch, 
+                               rnn_states_batch, 
+                               actions_batch, 
+                               masks_batch, 
+                               available_actions_batch, 
+                               active_masks_batch,
+                               new_actor=self.policy.actor,
+                               old_actor=old_actor)
+            
+
+
+            psi_val = (adv_targ + kl).mean()
+            
+            self.policy.actor_optimiser.zero_grad()
+            psi_val.backward()
+
+            self.policy.actor_optimiser.step()
+
+        # return value_loss, critic_grad_norm, kl, loss_improve, expected_improve, dist_entropy, ratio
+        return value_loss, critic_grad_norm, kl, dist_entropy
+
+
+
     def trpo_update(self, sample, update_actor=True):
         """
         Update actor and critic networks.
@@ -201,7 +296,7 @@ class HATRPO():
         adv_targ, available_actions_batch, factor_batch = sample
 
         old_action_log_probs_batch = check(old_action_log_probs_batch).to(**self.tpdv)
-        adv_targ = check(adv_targ).to(**self.tpdv)
+        adv_targ = check(adv_targ).to(**self.tpdv) # Is this advantage target?
         value_preds_batch = check(value_preds_batch).to(**self.tpdv)
         return_batch = check(return_batch).to(**self.tpdv)
         active_masks_batch = check(active_masks_batch).to(**self.tpdv)
@@ -237,6 +332,7 @@ class HATRPO():
                            active_masks_batch).sum() / active_masks_batch.sum()
         else:
             loss = torch.sum(ratio * factor_batch * adv_targ, dim=-1, keepdim=True).mean()
+            
         
         loss_grad = torch.autograd.grad(loss, self.policy.actor.parameters(), allow_unused=True)
         loss_grad = self.flat_grad(loss_grad)
@@ -266,12 +362,15 @@ class HATRPO():
         step_size = 1 / torch.sqrt(shs / self.kl_threshold)[0]
         full_step = step_size * step_dir
 
+        """ Create a new actor network to pose as the old un-updated actor. Its parameters need to be updated with
+            the current actor parameters
+        """
         old_actor = R_Actor(self.policy.args, 
                             self.policy.obs_space,  
                             self.policy.act_space, 
                             self.device)
-        self.update_model(old_actor, params)
-        expected_improve = (loss_grad * full_step).sum(0, keepdim=True)
+        self.update_model(old_actor, params) # The old actor will have random parameters if we don't do this
+        expected_improve = (loss_grad * full_step).sum(0, keepdim=True) # Expected improvement is loss_grad*fullstep
         expected_improve = expected_improve.data.cpu().numpy()
         
         # Backtracking line search
@@ -297,7 +396,7 @@ class HATRPO():
                 new_loss = torch.sum(ratio * factor_batch * adv_targ, dim=-1, keepdim=True).mean()
 
             new_loss = new_loss.data.cpu().numpy()
-            loss_improve = new_loss - loss
+            loss_improve = new_loss - loss #Change in loss
             
             kl = self.kl_divergence(obs_batch, 
                                rnn_states_batch, 
@@ -307,9 +406,13 @@ class HATRPO():
                                active_masks_batch,
                                new_actor=self.policy.actor,
                                old_actor=old_actor)
-            kl = kl.mean()
+            kl = kl.mean() # Get the expected value of KL divergence
 
             if kl < self.kl_threshold and (loss_improve / expected_improve) > self.accept_ratio and loss_improve.item()>0:
+                # Conditions when this enters:
+                # 1. kl divergence is under the required threshold
+                # 2. Change in loss(loss_improve) is positive
+                # 3. Change in loss(loss_improve) is greater than a fraction of expected_improve
                 flag = True
                 break
             expected_improve *= 0.5
@@ -333,7 +436,7 @@ class HATRPO():
         if self._use_popart:
             advantages = buffer.returns[:-1] - self.value_normalizer.denormalize(buffer.value_preds[:-1])
         else:
-            advantages = buffer.returns[:-1] - buffer.value_preds[:-1]
+            advantages = buffer.returns[:-1] - buffer.value_preds[:-1] # Q Value function - Value Function
         advantages_copy = advantages.copy()
         advantages_copy[buffer.active_masks[:-1] == 0.0] = np.nan
         mean_advantages = np.nanmean(advantages_copy)

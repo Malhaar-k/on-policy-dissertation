@@ -66,6 +66,10 @@ class Runner(object):
         if self.algorithm_name == "mat" or self.algorithm_name == "mat_dec":
             from onpolicy.algorithms.mat.mat_trainer import MATTrainer as TrainAlgo
             from onpolicy.algorithms.mat.algorithm.transformer_policy import TransformerPolicy as Policy
+        elif self.algorithm_name == "mdpo":
+            from onpolicy.algorithms.mdpo.mdpo_trainer import MDPO as TrainAlgo
+            from onpolicy.algorithms.mdpo.mdpo_policy import MDPO_Policy as Policy
+
         else:
             from onpolicy.algorithms.r_mappo.r_mappo import R_MAPPO as TrainAlgo
             from onpolicy.algorithms.r_mappo.algorithm.rMAPPOPolicy import R_MAPPOPolicy as Policy
@@ -79,6 +83,12 @@ class Runner(object):
         # policy network
         if self.algorithm_name == "mat" or self.algorithm_name == "mat_dec":
             self.policy = Policy(self.all_args, self.envs.observation_space[0], share_observation_space, self.envs.action_space[0], self.num_agents, device = self.device)
+        
+        elif self.algorithm_name == "mdpo":
+            #  def __init__(self, args, obs_space, cent_obs_space, act_space, device=torch.device("cpu")):
+            #  def __init__(self, args, obs_space, cent_obs_space, act_space, device=torch.device("cpu")):
+            self.policy = Policy(self.all_args, self.envs.observation_space[0], share_observation_space, self.envs.action_space[0], device = self.device)
+        
         else:
             self.policy = Policy(self.all_args, self.envs.observation_space[0], share_observation_space, self.envs.action_space[0], device = self.device)
 
@@ -88,6 +98,8 @@ class Runner(object):
         # algorithm
         if self.algorithm_name == "mat" or self.algorithm_name == "mat_dec":
             self.trainer = TrainAlgo(self.all_args, self.policy, self.num_agents, device = self.device)
+        elif self.algorithm_name == "mdpo":
+            self.trainer = TrainAlgo(self.all_args, self.policy, device = self.device)
         else:
             self.trainer = TrainAlgo(self.all_args, self.policy, device = self.device)
         
