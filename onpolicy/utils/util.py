@@ -8,11 +8,13 @@ def check(input):
         
 def get_gard_norm(it):
     sum_grad = 0
+    none_counter = 0
     for x in it:
         if x.grad is None:
+            none_counter += 1
             continue
         sum_grad += x.grad.norm() ** 2
-    return math.sqrt(sum_grad)
+    return math.sqrt(sum_grad), none_counter
 
 def update_linear_schedule(optimizer, epoch, total_num_epochs, initial_lr):
     """Decreases the learning rate linearly"""

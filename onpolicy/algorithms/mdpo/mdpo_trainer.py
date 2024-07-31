@@ -89,6 +89,54 @@ class MDPO():
 
         return value_loss
         
+    def flat_grad(self, grads):
+        """
+        Flattens the gradients into a 1-dimensional tensor.
+
+        Args:
+            grads (list): A list of gradients.
+
+        Returns:
+            torch.Tensor: A 1-dimensional tensor containing the flattened gradients.
+        """
+        grad_flatten = []
+        for grad in grads:
+            if grad is None:
+                continue
+            grad_flatten.append(grad.view(-1))
+        grad_flatten = torch.cat(grad_flatten)
+        return grad_flatten
+
+    def flat_hessian(self, hessians):
+        hessians_flatten = []
+        for hessian in hessians:
+            if hessian is None:
+                continue
+            hessians_flatten.append(hessian.contiguous().view(-1))
+        hessians_flatten = torch.cat(hessians_flatten).data
+        return hessians_flatten
+
+    def flat_params(self, model):
+        params = []
+        for param in model.parameters():
+            params.append(param.data.view(-1))
+        params_flatten = torch.cat(params)
+        return params_flatten
+
+    def update_model(self, model, new_params):
+        index = 0
+        for params in model.parameters():
+            params_length = len(params.view(-1))
+            new_param = new_params[index: index + params_length]
+            new_param = new_param.view(params.size())
+            params.data.copy_(new_param)
+            index += params_length
+    
+    def kl_approx(self, q, p):
+        r = torch.exp(p - q)
+        kl = r - 1 - p + q
+        return kl
+    
     def kl_divergence(self, obs, rnn_states, action, masks, available_actions, active_masks, new_actor, old_actor):
         """
         Calculates the Kullback-Leibler (KL) divergence between the old policy and the new policy.
@@ -148,6 +196,13 @@ class MDPO():
         share_obs_batch, obs_batch, rnn_states_batch, rnn_states_critic_batch, actions_batch, \
         value_preds_batch, return_batch, masks_batch, active_masks_batch, old_action_log_probs_batch, \
         adv_targ, available_actions_batch = sample
+
+        # Checking if the object is a numpy array and converting it to a tensor
+        old_action_log_probs_batch = check(old_action_log_probs_batch).to(**self.tpdv)
+        adv_targ = check(adv_targ).to(**self.tpdv)
+        value_preds_batch = check(value_preds_batch).to(**self.tpdv)
+        return_batch = check(return_batch).to(**self.tpdv)
+        active_masks_batch = check(active_masks_batch).to(**self.tpdv)
         #  DEBUG_MK: factor_batch # I don't know where this is used. We'll get to this later
         """
         adv_targ := Advantage value?? I think 
@@ -169,7 +224,8 @@ class MDPO():
         value_loss = self.cal_val_loss(values, value_preds_batch, return_batch, active_masks_batch)
 
         self.policy.critic_optimizer.zero_grad()
-
+        
+        # DEBUG_MK: self.value_loss_coef is hardcoded to 1
         (value_loss * self.value_loss_coef).backward()
 
         if self._use_max_grad_norm:
@@ -184,13 +240,15 @@ class MDPO():
         1. Initialise an "old" actor with current actor params
         2. for loop for updating?
         """
-        
+        #Reached here
         old_params = self.flat_params(self.policy.actor)
         old_actor = R_Actor(self.policy.args, 
                             self.policy.obs_space,  
                             self.policy.act_space, 
                             self.device)
         self.update_model(old_actor, old_params)
+
+        actor_grad_norm = 0
 
         sgd_steps:int = 10 # Number of steps for SGD
         for step in range(sgd_steps):
@@ -209,15 +267,16 @@ class MDPO():
 
             # psi = E[E[advantage] - KL(pi_old, pi_new)]
             print("Calculating psi... Might crash here")
-            psi_val = (adv_targ.mean() - kl_expected/step_size).mean()
+            psi_val = (adv_targ.mean() - kl_expected/step_size)
             
-            self.policy.actor_optimiser.zero_grad()
+            self.policy.actor_optimizer.zero_grad()
             # method 1
-            psi_val.backward() # Not sure if this works at all
+            psi_val.backward() # DEBUG_MK: Not sure if this works at all
             
-            actor_grad_norm = get_gard_norm(self.policy.actor.parameters())
+            #DEBUG_MK: Why is this zero
+            actor_grad_norm, none_counter = get_gard_norm(self.policy.actor.parameters())
 
-            self.policy.actor_optimiser.step()
+            self.policy.actor_optimizer.step()
 
             # method 2 
             # psi_grad = torch.autograd.grad(psi_val, self.policy.actor.parameters(), allow_unused=True)
@@ -225,7 +284,7 @@ class MDPO():
             
 
         # return value_loss, critic_grad_norm, kl, loss_improve, expected_improve, dist_entropy, ratio
-        return value_loss, critic_grad_norm, actor_grad_norm, kl, dist_entropy, psi_val
+        return value_loss, critic_grad_norm, actor_grad_norm, kl, dist_entropy, psi_val, none_counter
 
 
     def train(self, buffer, update_actor=True):
@@ -255,6 +314,7 @@ class MDPO():
         train_info['actor_grad_norm'] = 0
         # train_info['ratio'] = 0
         train_info['psi'] = 0
+        train_info['none_counter'] = 0 # DEBUG_MK: Counting how many times the gradient is None
 
         # Not adding flags for recurrent policy and shit because I don't know what they do
         data_generator = buffer.feed_forward_generator(advantages, self.num_mini_batch)
@@ -262,11 +322,11 @@ class MDPO():
         for epoch in range(self.ppo_epoch):    
             for sample in data_generator:
                 # DEBUG_MK: , imp_weights <-- Problems. When adding back, change in mdpo_update too
-                value_loss, critic_grad_norm,actor_grad_norm ,kl , dist_entropy, psi_val \
+                value_loss, critic_grad_norm,actor_grad_norm ,kl , dist_entropy, psi_val, none_counter \
                     = self.mdpo_update(sample, update_actor)
 
                 train_info['value_loss'] += value_loss.item()
-                train_info['kl'] += kl
+                train_info['kl'] += kl.mean()
                 # train_info['loss_improve'] += loss_improve.item()
                 # train_info['expected_improve'] += expected_improve
                 train_info['dist_entropy'] += dist_entropy.item()
@@ -274,6 +334,8 @@ class MDPO():
                 train_info['actor_grad_norm'] += actor_grad_norm
                 # train_info['ratio'] += imp_weights.mean()
                 train_info['psi'] = psi_val.mean()
+                train_info['none_counter'] = none_counter
+
                 
                 if epoch == 0 : print("Trained for 1 epoch successfully")
             

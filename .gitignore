@@ -16,4 +16,5 @@ logs
 *.so
 notes.txt
 *.zip
+tests
 
