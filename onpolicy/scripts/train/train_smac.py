@@ -243,7 +243,7 @@ def main(args):
     if all_args.algorithm_name == "happo" or all_args.algorithm_name == "hatrpo":
         from onpolicy.runner.separated.smac_runner import SMACRunner as Runner
 
-    print(" Loaded all modules")
+    print("Loaded all modules")
     runner = Runner(config)
 
     print("All __init__() executed succesfully")

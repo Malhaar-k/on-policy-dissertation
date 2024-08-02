@@ -267,11 +267,12 @@ class MDPO():
 
             # psi = E[E[advantage] - KL(pi_old, pi_new)]
             print("Calculating psi... Might crash here")
-            psi_val = (adv_targ.mean() - kl_expected/step_size)
+            psi_val = (adv_targ.mean() - kl_expected*step_size).mean() # This should already be a scalar
             
             self.policy.actor_optimizer.zero_grad()
             # method 1
-            psi_val.backward() # DEBUG_MK: Not sure if this works at all
+            
+            psi_val.backward(inputs=self.policy.actor.parameters()) # DEBUG_MK: Not sure if this works at all
             
             #DEBUG_MK: Why is this zero
             actor_grad_norm, none_counter = get_gard_norm(self.policy.actor.parameters())
