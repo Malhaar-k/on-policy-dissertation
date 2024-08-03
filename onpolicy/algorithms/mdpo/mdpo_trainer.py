@@ -164,7 +164,7 @@ class MDPO():
         _, _, mu_old, std_old, probs_old = old_actor.evaluate_actions(obs, rnn_states, action, masks, available_actions, active_masks)
         if mu.grad_fn==None:
             probs_old=probs_old.detach()
-            kl= self.kl_approx(probs_old,probs)
+            kl = self.kl_approx(probs_old,probs)
         else:
             logstd = torch.log(std)
             mu_old = mu_old.detach()
@@ -317,7 +317,7 @@ class MDPO():
         train_info['psi'] = 0
         train_info['none_counter'] = 0 # DEBUG_MK: Counting how many times the gradient is None
 
-        # Not adding flags for recurrent policy and shit because I don't know what they do
+
         data_generator = buffer.feed_forward_generator(advantages, self.num_mini_batch)
 
         for epoch in range(self.ppo_epoch):    
@@ -325,6 +325,9 @@ class MDPO():
                 # DEBUG_MK: , imp_weights <-- Problems. When adding back, change in mdpo_update too
                 value_loss, critic_grad_norm,actor_grad_norm ,kl , dist_entropy, psi_val, none_counter \
                     = self.mdpo_update(sample, update_actor)
+
+                print(type(psi_val))
+                
 
                 train_info['value_loss'] += value_loss.item()
                 train_info['kl'] += kl.mean()
@@ -338,8 +341,7 @@ class MDPO():
                 train_info['none_counter'] = none_counter
 
                 
-                if epoch == 0 : print("Trained for 1 epoch successfully")
-            
+            if epoch == 0 : print("Trained for 1 epoch successfully")
             num_updates = self.ppo_epoch*  self.num_mini_batch
 
         for k in train_info.keys():
