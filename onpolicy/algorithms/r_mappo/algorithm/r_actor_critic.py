@@ -99,6 +99,8 @@ class R_Actor(nn.Module):
         if self._use_naive_recurrent_policy or self._use_recurrent_policy:
             actor_features, rnn_states = self.rnn(actor_features, rnn_states, masks)
 
+        # This could have been a compile time choice in C++, but we don't have that luxury here
+        # Thanks copilot for the above comment
         if self.algo == "hatrpo" or self.algo == "mdpo":
             action_log_probs, dist_entropy ,action_mu, action_std, all_probs= self.act.evaluate_actions_trpo(actor_features,
                                                                     action, available_actions,
