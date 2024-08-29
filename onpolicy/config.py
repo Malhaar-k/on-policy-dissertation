@@ -9,7 +9,7 @@ def get_config():
 
     Prepare parameters:
         --algorithm_name <algorithm_name>
-            specifiy the algorithm, including `["rmappo", "mappo", "rmappg", "mappg", "trpo"]`
+            specifiy the algorithm, including `["rmappo", "mappo", "rmappg", "mappg", "trpo", "mdpo"]`
         --experiment_name <str>
             an identifier to distinguish different experiment.
         --seed <int>
@@ -158,7 +158,7 @@ def get_config():
 
     # prepare parameters
     parser.add_argument("--algorithm_name", type=str,
-                        default='mappo', choices=["rmappo", "mappo", "happo", "hatrpo", "mat", "mat_dec"])
+                        default='mappo', choices=["rmappo", "mappo", "happo", "hatrpo", "mat", "mat_dec", "mdpo"])
 
     parser.add_argument("--experiment_name", type=str, default="check", help="an identifier to distinguish different experiment.")
     parser.add_argument("--seed", type=int, default=1, help="Random seed for numpy/torch")
@@ -231,7 +231,7 @@ def get_config():
 
     # trpo parameters
     parser.add_argument("--kl_threshold", type=float, 
-                        default=0.01, help='the threshold of kl-divergence (default: 0.01)')
+                        default=0.06, help='the threshold of kl-divergence (default: 0.06)')
     parser.add_argument("--ls_step", type=int, 
                         default=10, help='number of line search (default: 10)')
     parser.add_argument("--accept_ratio", type=float, 
@@ -246,10 +246,10 @@ def get_config():
                         help='ppo clip parameter (default: 0.2)')
     parser.add_argument("--num_mini_batch", type=int, default=1,
                         help='number of batches for ppo (default: 1)')
-    parser.add_argument("--entropy_coef", type=float, default=0.01,
+    parser.add_argument("--entropy_coef", type=float, default=0.0005,
                         help='entropy term coefficient (default: 0.01)')
     parser.add_argument("--value_loss_coef", type=float,
-                        default=1, help='value loss coefficient (default: 0.5)')
+                        default=0.05, help='value loss coefficient (default: 0.5)')
     parser.add_argument("--use_max_grad_norm",
                         action='store_false', default=True, help="by default, use max norm of gradients. If set, do not use.")
     parser.add_argument("--max_grad_norm", type=float, default=0.5,
