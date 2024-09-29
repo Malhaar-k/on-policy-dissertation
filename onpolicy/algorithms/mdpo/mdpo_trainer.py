@@ -25,7 +25,7 @@ class MDPO():
 
         self.clip_param = args.clip_param
         self.num_mini_batch = args.num_mini_batch
-        self.ppo_epoch = args.num_mini_batch # DEBUG_MK I thought this would have been 15. So that's not a problem
+        self.ppo_epoch = args.ppo_epoch # DEBUG_MK I thought this would have been 15. So that's not a problem
         self.data_chunk_length = args.data_chunk_length
         self.value_loss_coef = args.value_loss_coef
         self.entropy_coef = args.entropy_coef
@@ -320,7 +320,7 @@ class MDPO():
         self.policy.critic_optimizer.zero_grad()
 
 
-        (value_loss * self.value_loss_coef).backward()
+        (value_loss * self.value_loss_coef/self.ppo_epoch).backward()
 
         if self._use_max_grad_norm:
             critic_grad_norm = nn.utils.clip_grad_norm_(self.policy.critic.parameters(), self.max_grad_norm)
