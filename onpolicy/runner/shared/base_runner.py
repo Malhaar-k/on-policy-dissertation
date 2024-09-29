@@ -86,6 +86,7 @@ class Runner(object):
         
         elif self.algorithm_name == "mdpo":
             #  def __init__(self, args, obs_space, cent_obs_space, act_space, device=torch.device("cpu")):
+            #  def __init__(self, args, obs_space, cent_obs_space, act_space, device=torch.device("cpu")):
             self.policy = Policy(self.all_args, self.envs.observation_space[0], share_observation_space, self.envs.action_space[0], device = self.device)
         
         else:

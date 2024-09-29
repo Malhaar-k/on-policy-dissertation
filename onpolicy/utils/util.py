@@ -8,9 +8,9 @@ def check(input):
         
 def get_gard_norm(it):
     sum_grad = 0
-
     for x in it:
         if x.grad is None:
+            print("Zero grad")
             continue
         sum_grad += x.grad.norm() ** 2
     return math.sqrt(sum_grad)

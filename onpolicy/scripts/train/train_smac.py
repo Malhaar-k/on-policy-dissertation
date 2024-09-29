@@ -133,7 +133,7 @@ def main(args):
         print("u are choosing to use rmappo, we set use_recurrent_policy to be True")
         all_args.use_recurrent_policy = True
         all_args.use_naive_recurrent_policy = False
-    elif all_args.algorithm_name == "mappo" or all_args.algorithm_name == "mat" or all_args.algorithm_name == "mat_dec":
+    elif all_args.algorithm_name == "mappo" or all_args.algorithm_name == "mat" or all_args.algorithm_name == "mat_dec" or all_args.algorithm_name == "mdpo":
         print("u are choosing to use mappo, we set use_recurrent_policy & use_naive_recurrent_policy to be False")
         all_args.use_recurrent_policy = False 
         all_args.use_naive_recurrent_policy = False
@@ -243,10 +243,10 @@ def main(args):
     if all_args.algorithm_name == "happo" or all_args.algorithm_name == "hatrpo":
         from onpolicy.runner.separated.smac_runner import SMACRunner as Runner
 
-    print("Loaded all modules")
+    print(" Loaded all modules")
     runner = Runner(config)
 
-    print("All __init__() executed succesfully")
+    print(" All __init__() executed succesfully")
     runner.run()
 
     # post process
